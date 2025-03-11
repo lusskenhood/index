@@ -148,6 +148,32 @@
             }
         }
 
+        // 翻译文本
+        async function translateText(text) {
+            try {
+                logDebugInfo("开始翻译一言...");
+                const url = `https://libretranslate.com/translate`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        q: text,
+                        source: 'zh',
+                        target: 'en',
+                    }),
+                });
+                const data = await response.json();
+                const translatedText = data.translatedText;
+                logDebugInfo(`翻译成功: ${translatedText}`);
+                return translatedText;
+            } catch (error) {
+                logDebugInfo(`翻译失败: ${error.message}`);
+                throw new Error("翻译失败");
+            }
+        }
+
         // 获取一言并生成图片
         async function fetchHitokoto() {
             try {
@@ -168,13 +194,7 @@
                 logDebugInfo(`一言获取成功: ${hitokotoText}`);
 
                 // 翻译成英文
-                logDebugInfo("开始翻译一言...");
-                const translationResponse = await fetch(
-                    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=en&dt=t&q=${encodeURIComponent(hitokotoText)}`
-                );
-                const translationData = await translationResponse.json();
-                const translatedText = translationData[0][0][0];
-                logDebugInfo(`翻译成功: ${translatedText}`);
+                const translatedText = await translateText(hitokotoText);
 
                 // 生成图片URL
                 logDebugInfo("开始生成图片...");
