@@ -70,7 +70,6 @@
             font-size: 12px;
             color: #999;
             margin-top: 10px;
-            white-space: pre-wrap; /* 保留换行和空格 */
         }
         .loading-spinner {
             border: 4px solid #f3f3f3;
@@ -106,7 +105,7 @@
 
         <!-- 一言 API 区域 -->
         <div class="card" id="hitokoto-card">
-            <h3>一言</h3>
+            <h3>英文名言</h3>
             <p id="hitokoto-content">加载中...</p>
             <button class="btn btn-primary" onclick="fetchHitokoto()">刷新一言</button>
             <div id="image-loading" class="loading-spinner" style="display: none;"></div>
@@ -124,59 +123,47 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
     <script>
-        // 调试信息
-        function logDebugInfo(message) {
-            const debugInfo = document.getElementById('debug-info');
-            debugInfo.textContent += `${new Date().toLocaleTimeString()}: ${message}\n`;
-        }
-
         // 获取随机用户信息
         async function fetchUser() {
             try {
-                logDebugInfo("开始获取随机用户信息...");
                 const response = await fetch('https://randomuser.me/api/');
                 const data = await response.json();
                 const user = data.results[0];
                 document.getElementById('user-image').src = user.picture.medium;
                 document.getElementById('user-name').textContent = `${user.name.first} ${user.name.last}`;
                 document.getElementById('user-email').textContent = user.email;
-                logDebugInfo("随机用户信息获取成功！");
             } catch (error) {
                 console.error("获取用户数据失败:", error);
                 document.getElementById('user-name').textContent = "出错啦！";
-                logDebugInfo(`获取用户数据失败: ${error.message}`);
-            }
-        }
-
-        // 翻译文本
-        async function translateText(text) {
-            try {
-                logDebugInfo("开始翻译一言...");
-                const url = `https://libretranslate.com/translate`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        q: text,
-                        source: 'zh',
-                        target: 'en',
-                    }),
-                });
-                const data = await response.json();
-                const translatedText = data.translatedText;
-                logDebugInfo(`翻译成功: ${translatedText}`);
-                return translatedText;
-            } catch (error) {
-                logDebugInfo(`翻译失败: ${error.message}`);
-                throw new Error("翻译失败");
             }
         }
 
         // 获取一言并生成图片
         async function fetchHitokoto() {
             try {
+                // 获取英文名言
+                const quoteResponse = await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                    window[callbackName] = function(data) {
+                        delete window[callbackName];
+                        document.body.removeChild(script);
+                        resolve(data);
+                    };
+                    script.src = `https://api.forismatic.com/api/1.0/?method=getQuote&format=jsonp&lang=en&jsonp=${callbackName}`;
+                    script.onerror = reject;
+                    document.body.appendChild(script);
+                });
+                
+                // 提取名言内容
+                const originalText = quoteResponse?.quoteText || '暂无名言内容';
+                const author = quoteResponse?.quoteAuthor?.trim() || '无名氏';
+
+                // 添加空值检查
+                if (!originalText || !author) {
+                    throw new Error(`API返回数据不完整: ${JSON.stringify(quoteResponse)}`);
+                }
+                
                 // 显示加载动画
                 const loadingSpinner = document.getElementById('image-loading');
                 const img = document.getElementById('generated-image');
@@ -184,23 +171,17 @@
                 loadingSpinner.style.display = 'block';
                 img.style.display = 'none';
                 downloadButton.style.display = 'none';
-                logDebugInfo("开始获取一言...");
 
-                // 获取一言
-                const hitokotoResponse = await fetch('https://v1.hitokoto.cn/');
-                const hitokotoData = await hitokotoResponse.json();
-                const hitokotoText = hitokotoData.hitokoto;
-                document.getElementById('hitokoto-content').textContent = `${hitokotoText} —— ${hitokotoData.from}`;
-                logDebugInfo(`一言获取成功: ${hitokotoText}`);
-
-                // 翻译成英文
-                const translatedText = await translateText(hitokotoText);
+                // 安全更新DOM内容
+                document.getElementById('hitokoto-content').textContent = 
+                    `${originalText}${author ? ' —— ' + author : ''}`;
 
                 // 生成图片URL
-                logDebugInfo("开始生成图片...");
-                const prompt = encodeURIComponent(translatedText);
-                const imageUrl = await generateImage(prompt);
-                logDebugInfo(`图片生成成功: ${imageUrl}`);
+                const prompt = encodeURIComponent(originalText);
+                const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&seed=100&model=flux&nologo=true`;
+
+                // 等待图片生成完成
+                await waitForImage(imageUrl);
 
                 // 显示图片
                 img.src = imageUrl;
@@ -213,62 +194,41 @@
 
                 // 检查图片是否加载成功
                 img.onerror = () => {
-                    logDebugInfo("图片加载失败，请检查URL或网络连接。");
+                    document.getElementById('debug-info').textContent = "图片加载失败，请检查URL或网络连接。";
                     loadingSpinner.style.display = 'none';
                     downloadButton.style.display = 'none';
                 };
             } catch (error) {
                 console.error("获取一言或生成图片失败:", error);
+                document.getElementById('debug-info').textContent = `详细错误: ${error.message} ${error.stack || ''}`;
                 document.getElementById('hitokoto-content').textContent = "出错啦！";
-                logDebugInfo(`获取一言或生成图片失败: ${error.message}`);
+                document.getElementById('debug-info').textContent = `错误: ${error.message}`;
                 document.getElementById('image-loading').style.display = 'none';
-            }
-        }
-
-        // 生成图片
-        async function generateImage(prompt) {
-            // 尝试使用 Pollinations AI
-            const pollinationsUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&seed=100&model=flux&nologo=true`;
-            try {
-                logDebugInfo("尝试使用 Pollinations AI 生成图片...");
-                await waitForImage(pollinationsUrl);
-                return pollinationsUrl;
-            } catch (error) {
-                console.error("Pollinations AI 生成图片失败:", error);
-                logDebugInfo(`Pollinations AI 生成图片失败: ${error.message}`);
-                // 如果 Pollinations AI 失败，尝试使用备用服务
-                const placeholderUrl = `https://via.placeholder.com/1024x1024.png?text=${prompt}`;
-                logDebugInfo(`使用备用服务生成图片: ${placeholderUrl}`);
-                return placeholderUrl;
             }
         }
 
         // 等待图片生成完成
         async function waitForImage(url) {
             return new Promise((resolve, reject) => {
-                const maxAttempts = 10; // 最大重试次数
-                const interval = 3000; // 每次重试间隔 3 秒
+                const maxAttempts = 15; // 最大重试次数
+                const interval = 2000; // 每次重试间隔 2 秒
                 let attempts = 0;
 
                 const checkImage = async () => {
                     attempts++;
-                    logDebugInfo(`尝试加载图片 (第 ${attempts} 次)...`);
                     try {
                         const response = await fetch(url);
                         if (response.ok) {
-                            logDebugInfo("图片加载成功！");
                             resolve();
                         } else if (attempts < maxAttempts) {
                             setTimeout(checkImage, interval);
                         } else {
-                            logDebugInfo("图片加载超时，请稍后再试。");
                             reject(new Error("图片生成超时，请稍后再试。"));
                         }
                     } catch (error) {
                         if (attempts < maxAttempts) {
                             setTimeout(checkImage, interval);
                         } else {
-                            logDebugInfo(`图片加载失败: ${error.message}`);
                             reject(error);
                         }
                     }
@@ -287,11 +247,9 @@
                     link.href = URL.createObjectURL(blob);
                     link.download = filename;
                     link.click();
-                    logDebugInfo(`图片下载成功: ${filename}`);
                 })
                 .catch(error => {
                     console.error("下载图片失败:", error);
-                    logDebugInfo(`下载图片失败: ${error.message}`);
                     alert("下载图片失败，请稍后再试。");
                 });
         }
