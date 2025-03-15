@@ -270,18 +270,14 @@
 
             try {
                 const encodedPrompt = encodeURIComponent(prompt);
-                // 随机选择1-3个隐藏选项
-                const hiddenCategories = ['angle', 'lighting', 'tone', 'composition'];
-                const numHiddenOptions = Math.floor(Math.random() * 3) + 1; // 1到3个
-                const selectedCategories = shuffleArray(hiddenCategories).slice(0, numHiddenOptions);
+                // 从每个隐藏选项类别中随机选择一个词语
+                const angle = promptLibrary.angle[Math.floor(Math.random() * promptLibrary.angle.length)];
+                const lighting = promptLibrary.lighting[Math.floor(Math.random() * promptLibrary.lighting.length)];
+                const tone = promptLibrary.tone[Math.floor(Math.random() * promptLibrary.tone.length)];
+                const composition = promptLibrary.composition[Math.floor(Math.random() * promptLibrary.composition.length)];
                 
-                let fullPrompt = prompt;
-                selectedCategories.forEach(category => {
-                    const options = promptLibrary[category];
-                    const randomOption = options[Math.floor(Math.random() * options.length)];
-                    fullPrompt += '，' + randomOption;
-                });
-
+                // 将所有选项拼接成完整的提示词
+                const fullPrompt = `${prompt}，${angle}，${lighting}，${tone}，${composition}`;
                 const encodedFullPrompt = encodeURIComponent(fullPrompt);
                 const imageUrl = `https://image.pollinations.ai/prompt/${encodedFullPrompt}?width=${size.width}&height=${size.height}&seed=100&model=flux&nologo=true`;
                     
