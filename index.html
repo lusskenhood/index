@@ -1,75 +1,78 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多功能展示页面</title>
-    <!-- 引入Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>提示词生成器</title>
     <style>
         body {
-            background-color: #f8f9fa;
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
+            margin: 0;
             padding: 20px;
+            background-color: #f5f5f5;
         }
-        .header {
-            background-color: #007bff;
-            color: white;
-            padding: 20px 0;
-            text-align: center;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .card {
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin: 20px auto;
-            text-align: center;
+        .container {
             max-width: 400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
-        .card h3 {
-            margin: 10px 0;
-            font-size: 1.5em;
-        }
-        .card p {
-            color: #666;
-            margin: 5px 0;
-        }
-        .footer {
+        h1 {
             text-align: center;
-            padding: 20px 0;
+            color: #333;
+            margin: 0 0 20px 0;
+            font-size: 24px;
+        }
+        .category-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .category-label {
+            font-weight: bold;
+            color: #555;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 16px;
+            color: #333;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        select:hover {
+            border-color: #007bff;
+        }
+        .result {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            min-height: 50px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
             background-color: #007bff;
             color: white;
-            width: 100%;
-            border-radius: 10px;
-            margin-top: 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        .user-info {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .user-info img {
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-        }
-        .generated-image {
-            margin-top: 20px;
-            max-width: 100%;
-            border-radius: 10px;
-        }
-        .download-button {
-            margin-top: 10px;
-        }
-        .debug-info {
-            font-size: 12px;
-            color: #999;
-            margin-top: 10px;
+        button:hover {
+            background-color: #0056b3;
         }
         .loading-spinner {
             border: 4px solid #f3f3f3;
@@ -79,186 +82,289 @@
             height: 30px;
             animation: spin 1s linear infinite;
             margin: 20px auto;
+            display: none;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .generated-image {
+            width: 100%;
+            border-radius: 8px;
+            display: none;
+        }
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            background-color: #f8d7da;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>多功能展示页面</h1>
-    </div>
-
     <div class="container">
-        <!-- Random User API 区域 -->
-        <div class="card" id="user-card">
-            <h3>随机用户信息</h3>
-            <div class="user-info">
-                <img id="user-image" src="https://via.placeholder.com/50" alt="用户头像">
-                <p id="user-name">加载中...</p>
-            </div>
-            <p id="user-email">加载中...</p>
-            <button class="btn btn-primary" onclick="fetchUser()">刷新用户</button>
+        <h1>提示词生成器</h1>
+        
+        <!-- 主题选择 -->
+        <div class="category-group">
+            <label class="category-label">主题</label>
+            <select id="subject-select" class="main-select">
+                <option value="">请选择主题</option>
+            </select>
         </div>
 
-        <!-- 一言 API 区域 -->
-        <div class="card" id="hitokoto-card">
-            <h3>英文名言</h3>
-            <p id="hitokoto-content">加载中...</p>
-            <button class="btn btn-primary" onclick="fetchHitokoto()">刷新一言</button>
-            <div id="image-loading" class="loading-spinner" style="display: none;"></div>
-            <img id="generated-image" class="generated-image" src="" alt="生成的图片" style="display: none;">
-            <button id="download-button" class="btn btn-success download-button" style="display: none;">下载图片</button>
-            <p class="debug-info" id="debug-info"></p>
+        <!-- 二级主题选择 -->
+        <div class="category-group" id="sub-subject-group" style="display: none;">
+            <label class="category-label">具体主题</label>
+            <select id="sub-subject-select" class="main-select">
+                <option value="">请选择具体主题</option>
+            </select>
         </div>
+
+        <!-- 风格选择 -->
+        <div class="category-group">
+            <label class="category-label">风格</label>
+            <select id="style-select" class="main-select">
+                <option value="">请选择风格</option>
+            </select>
+        </div>
+
+        <!-- 尺寸选择 -->
+        <div class="category-group">
+            <label class="category-label">图片尺寸</label>
+                        <select id="image-size">
+                <option value='{"width":1024,"height":768}'>1024x768</option>
+                <option value='{"width":1024,"height":576}'>1024x576</option>
+                <option value='{"width":1024,"height":1024}'>1024x1024</option>
+                <option value='{"width":576,"height":1024}'>576x1024</option>
+                <option value='{"width":768,"height":1024}'>768x1024</option>
+            </select>
+        </div>
+
+        <!-- 提示词显示框 -->
+        <div class="result" id="result" contenteditable="true"></div>
+
+        <!-- 生成图片按钮 -->
+        <button id="generate-button">生成图片</button>
+
+        <!-- 图片显示区域 -->
+        <div id="image-loading" class="loading-spinner"></div>
+        <img id="generated-image" class="generated-image" src="" alt="生成的图片">
+        
+        <!-- 下载按钮 -->
+        <button id="download-button" style="display: none;">下载图片</button>
+
+        <!-- 批量下载按钮 -->
+        <button id="batch-download-button">批量下载</button>
     </div>
 
-    <div class="footer">
-        <p>&copy; 2023 多功能展示页面. 版权所有.</p>
-    </div>
-
-    <!-- 引入Bootstrap JS和Popper.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
     <script>
-        // 获取随机用户信息
-        async function fetchUser() {
-            try {
-                const response = await fetch('https://randomuser.me/api/');
-                const data = await response.json();
-                const user = data.results[0];
-                document.getElementById('user-image').src = user.picture.medium;
-                document.getElementById('user-name').textContent = `${user.name.first} ${user.name.last}`;
-                document.getElementById('user-email').textContent = user.email;
-            } catch (error) {
-                console.error("获取用户数据失败:", error);
-                document.getElementById('user-name').textContent = "出错啦！";
-            }
-        }
+        // 提示词库
+        const promptLibrary = {
+            // 隐藏选项
+            angle: ['俯视', '仰视', '平视', '侧视', '远景', '特写', '全景', '微距'],
+            lighting: ['自然光', '柔和光', '逆光', '侧光', '暖光', '冷光', '聚光', '散射光', '晨光', '夕阳光', '月光'],
+            tone: ['明亮', '暗调', '高对比度', '低对比度', '饱和', '柔和', '复古', '单色', '暖色调', '冷色调'],
+            composition: ['对称构图', '三分法', '对角线构图', '框架构图', '引导线构图', '中心构图', '重复构图', '最小化构图', '曲线构图', '散点构图'],
+            subject: {
+                '人物': ['婴儿', '小男孩', '小女孩', '青年男性', '青年女性', '中年男性', '中年女性', '老年男性', '老年女性', '亚洲人', '欧洲人', '非洲人', '高大健壮', '纤瘦优雅', '运动员', '艺术家', '商务人士', '学生', '医生', '农民'],
+                '风景': ['自然风光', '城市风光', '乡村风光', '山水', '海景', '森林', '沙漠', '雪景', '瀑布', '草原', '湖泊', '峡谷', '火山', '极光', '日落'],
+                '动物': ['野生动物', '家畜', '宠物', '鸟类', '海洋生物', '昆虫', '爬行动物', '两栖动物', '大型猫科', '大型犬科', '灵长类', '啮齿类', '鹿科动物', '熊科动物'],
+                '建筑': ['古代建筑', '现代建筑', '地标建筑', '宗教建筑', '居住建筑', '工业建筑', '商业建筑', '教育建筑', '文化建筑', '体育场馆', '桥梁', '城堡', '宫殿'],
+                '物品': ['日常用品', '电子产品', '古董文物', '乐器', '武器', '交通工具', '服装', '珠宝首饰', '家具', '玩具', '工具', '书籍'],
+                '科技': ['航天器', '机器人', '人工智能', '未来城市', '实验室', '数据中心', '智能设备', '新能源设备', '医疗设备', '通信设备'],
+                '幻想': ['魔法世界', '科幻场景', '神话传说', '童话世界', '未来世界', '异世界', '蒸汽朋克', '赛博朋克', '奇幻生物', '超自然现象'],
+                '美食': ['中餐', '西餐', '日料', '韩餐', '甜点', '饮品', '水果', '海鲜', '烧烤', '街边小吃'],
+                '运动': ['球类运动', '田径运动', '水上运动', '冰雪运动', '极限运动', '武术', '瑜伽', '健身', '赛车运动', '登山'],
+                '艺术': ['绘画', '雕塑', '摄影', '舞蹈', '音乐', '戏剧', '电影', '手工艺', '书法', '装置艺术']
+            },
+            style: [
+                // 艺术风格
+                '油画', '水彩', '素描', '版画', '丙烯', '国画', '粉彩', '水墨', '铅笔画', '炭笔画',
+                // 摄影风格
+                '纪实摄影', '人像摄影', '风光摄影', '街拍', '黑白摄影', '长曝光', '微距摄影', '航拍', '水下摄影', '夜景摄影',
+                // 数字艺术风格
+                '像素艺术', '3D渲染', '矢量艺术', '赛博朋克', '故障艺术', '全息图', '低多边形', '等距艺术', '数字绘画', 'NFT艺术',
+                // 设计风格
+                '极简主义', '波普艺术', '包豪斯', '未来主义', '复古风', '工业风', '北欧风', '日式简约', '后现代', '有机设计',
+                // 文化风格
+                '东方水墨', '浮世绘', '哥特风格', '巴洛克', '洛可可', '印象派', '表现主义', '超现实主义', '抽象主义', '波普艺术',
+                // 特殊效果
+                '霓虹效果', '渐变艺术', '双重曝光', '剪纸艺术', '马赛克', '点彩', '金箔效果', '水彩晕染', '破旧效果', '手绘效果'
+            ]
+        };
 
-        // 获取一言并生成图片
-        async function fetchHitokoto() {
-            try {
-                // 获取英文名言
-                const quoteResponse = await new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-                    window[callbackName] = function(data) {
-                        delete window[callbackName];
-                        document.body.removeChild(script);
-                        resolve(data);
-                    };
-                    script.src = `https://api.forismatic.com/api/1.0/?method=getQuote&format=jsonp&lang=en&jsonp=${callbackName}`;
-                    script.onerror = reject;
-                    document.body.appendChild(script);
-                });
-                
-                // 提取名言内容
-                const originalText = quoteResponse?.quoteText || '暂无名言内容';
-                const author = quoteResponse?.quoteAuthor?.trim() || '无名氏';
+        // 初始化选择框
+        function initializeSelects() {
+            const subjectSelect = document.getElementById('subject-select');
+            const styleSelect = document.getElementById('style-select');
+            const subSubjectGroup = document.getElementById('sub-subject-group');
+            const subSubjectSelect = document.getElementById('sub-subject-select');
 
-                // 添加空值检查
-                if (!originalText || !author) {
-                    throw new Error(`API返回数据不完整: ${JSON.stringify(quoteResponse)}`);
-                }
-                
-                // 显示加载动画
-                const loadingSpinner = document.getElementById('image-loading');
-                const img = document.getElementById('generated-image');
-                const downloadButton = document.getElementById('download-button');
-                loadingSpinner.style.display = 'block';
-                img.style.display = 'none';
-                downloadButton.style.display = 'none';
-
-                // 安全更新DOM内容
-                document.getElementById('hitokoto-content').textContent = 
-                    `${originalText}${author ? ' —— ' + author : ''}`;
-
-                // 生成图片URL
-                const prompt = encodeURIComponent(originalText);
-                const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&seed=100&model=flux&nologo=true`;
-
-                // 等待图片生成完成
-                await waitForImage(imageUrl);
-
-                // 显示图片
-                img.src = imageUrl;
-                img.style.display = 'block';
-                loadingSpinner.style.display = 'none';
-
-                // 显示下载按钮
-                downloadButton.style.display = 'block';
-                downloadButton.onclick = () => downloadImage(imageUrl, `image_${Date.now()}.png`);
-
-                // 检查图片是否加载成功
-                img.onerror = () => {
-                    document.getElementById('debug-info').textContent = "图片加载失败，请检查URL或网络连接。";
-                    loadingSpinner.style.display = 'none';
-                    downloadButton.style.display = 'none';
-                };
-            } catch (error) {
-                console.error("获取一言或生成图片失败:", error);
-                document.getElementById('debug-info').textContent = `详细错误: ${error.message} ${error.stack || ''}`;
-                document.getElementById('hitokoto-content').textContent = "出错啦！";
-                document.getElementById('debug-info').textContent = `错误: ${error.message}`;
-                document.getElementById('image-loading').style.display = 'none';
-            }
-        }
-
-        // 等待图片生成完成
-        async function waitForImage(url) {
-            return new Promise((resolve, reject) => {
-                const maxAttempts = 15; // 最大重试次数
-                const interval = 2000; // 每次重试间隔 2 秒
-                let attempts = 0;
-
-                const checkImage = async () => {
-                    attempts++;
-                    try {
-                        const response = await fetch(url);
-                        if (response.ok) {
-                            resolve();
-                        } else if (attempts < maxAttempts) {
-                            setTimeout(checkImage, interval);
-                        } else {
-                            reject(new Error("图片生成超时，请稍后再试。"));
-                        }
-                    } catch (error) {
-                        if (attempts < maxAttempts) {
-                            setTimeout(checkImage, interval);
-                        } else {
-                            reject(error);
-                        }
-                    }
-                };
-
-                checkImage();
+            // 添加主题选项
+            Object.keys(promptLibrary.subject).forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                subjectSelect.appendChild(option);
             });
+
+            // 添加风格选项
+            promptLibrary.style.forEach(style => {
+                const option = document.createElement('option');
+                option.value = style;
+                option.textContent = style;
+                styleSelect.appendChild(option);
+            });
+
+            // 添加主题选择事件监听器
+            subjectSelect.addEventListener('change', function() {
+                const selectedSubject = this.value;
+                // 清空并更新二级选项
+                subSubjectSelect.innerHTML = '<option value="">请选择具体主题</option>';
+                if (selectedSubject && promptLibrary.subject[selectedSubject]) {
+                    promptLibrary.subject[selectedSubject].forEach(subItem => {
+                        const option = document.createElement('option');
+                        option.value = subItem;
+                        option.textContent = subItem;
+                        subSubjectSelect.appendChild(option);
+                    });
+                    subSubjectGroup.style.display = 'block';
+                } else {
+                    subSubjectGroup.style.display = 'none';
+                }
+                updatePrompt();
+            });
+
+            // 添加二级主题选择事件监听器
+            subSubjectSelect.addEventListener('change', updatePrompt);
+        }
+
+        // 更新提示词
+        function updatePrompt() {
+            const subject = document.getElementById('sub-subject-select').value;
+            const style = document.getElementById('style-select').value;
+            const result = document.getElementById('result');
+
+            let prompt = '';
+            if (subject) {
+                prompt = subject;
+            }
+            if (style) {
+                prompt += prompt ? '，' + style : style;
+            }
+
+            result.textContent = prompt;
+        }
+
+        // 生成图片
+        async function generateImage() {
+            const prompt = document.getElementById('result').textContent;
+            const sizeSelect = document.getElementById('image-size');
+            const size = JSON.parse(sizeSelect.value);
+
+            document.getElementById('image-loading').style.display = 'block';
+            document.getElementById('generated-image').style.display = 'none';
+            document.getElementById('download-button').style.display = 'none';
+
+            try {
+                const encodedPrompt = encodeURIComponent(prompt);
+                // 随机选择1-3个隐藏选项
+                const hiddenCategories = ['angle', 'lighting', 'tone', 'composition'];
+                const numHiddenOptions = Math.floor(Math.random() * 3) + 1; // 1到3个
+                const selectedCategories = shuffleArray(hiddenCategories).slice(0, numHiddenOptions);
+                
+                let fullPrompt = prompt;
+                selectedCategories.forEach(category => {
+                    const options = promptLibrary[category];
+                    const randomOption = options[Math.floor(Math.random() * options.length)];
+                    fullPrompt += '，' + randomOption;
+                });
+
+                const encodedFullPrompt = encodeURIComponent(fullPrompt);
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodedFullPrompt}?width=${size.width}&height=${size.height}&seed=100&model=flux&nologo=true`;
+                    
+                document.getElementById('generated-image').src = imageUrl;
+                document.getElementById('generated-image').onload = () => {
+                    document.getElementById('image-loading').style.display = 'none';
+                    document.getElementById('generated-image').style.display = 'block';
+                    document.getElementById('download-button').style.display = 'block';
+                };
+                document.getElementById('generated-image').onerror = () => {
+                    throw new Error('图片生成失败');
+                };
+            } catch (error) {
+                document.getElementById('image-loading').style.display = 'none';
+                alert('图片生成失败：' + error.message);
+            }
         }
 
         // 下载图片
-        function downloadImage(url, filename) {
-            fetch(url)
-                .then(response => response.blob())
-                .then(blob => {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = filename;
-                    link.click();
-                })
-                .catch(error => {
-                    console.error("下载图片失败:", error);
-                    alert("下载图片失败，请稍后再试。");
-                });
+        async function downloadImage() {
+            const img = document.getElementById('generated-image');
+            if (!img.src) return;
+
+            try {
+                const response = await fetch(img.src);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `generated_image_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('图片下载失败：' + error.message);
+            }
         }
 
-        // 页面加载时初始化数据
-        window.onload = () => {
-            fetchUser();
-            fetchHitokoto();
-        };
+        // 批量下载
+        let isBatchDownloading = false;
+        function toggleBatchDownload() {
+            isBatchDownloading = !isBatchDownloading;
+            const button = document.getElementById('batch-download-button');
+            button.textContent = isBatchDownloading ? '停止下载' : '批量下载';
+
+            if (isBatchDownloading) {
+                startBatchDownload();
+            }
+        }
+
+        function startBatchDownload() {
+            if (!isBatchDownloading) return;
+
+            generateImage();
+            setTimeout(() => {
+                if (isBatchDownloading) {
+                    downloadImage();
+                    setTimeout(startBatchDownload, 15000); // 15秒后继续下一次下载
+                }
+            }, 2000); // 等待2秒确保图片生成完成
+        }
+
+        // 初始化页面
+        // 数组随机排序函数
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSelects();
+
+            // 添加事件监听
+            document.getElementById('subject-select').addEventListener('change', updatePrompt);
+            document.getElementById('style-select').addEventListener('change', updatePrompt);
+            document.getElementById('generate-button').addEventListener('click', generateImage);
+            document.getElementById('download-button').addEventListener('click', downloadImage);
+            document.getElementById('batch-download-button').addEventListener('click', toggleBatchDownload);
+        });
     </script>
 </body>
 </html>
